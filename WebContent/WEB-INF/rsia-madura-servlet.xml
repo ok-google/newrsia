@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/mvc
+		http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/security
+		http://www.springframework.org/schema/security/spring-security.xsd
+		http://www.springframework.org/schema/tx 
+		http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	<!-- Add support for component scanning -->
+	<context:component-scan base-package="com.rsia.madura" />
+
+	<!-- Add support for conversion, formatting and validation support -->
+	<mvc:resources mapping="/resources/**" location="/resources/"/>
+	<mvc:resources mapping="/WEB-INF/view/app/**" location="/WEB-INF/view/app/"/>
+	<mvc:annotation-driven/>
+	
+
+	<!-- Define Spring MVC view resolver -->
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/view/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+
+	    <!-- Step 1: Define Database DataSource / connection pool -->
+	<bean id="myDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass" value="org.postgresql.Driver" />
+        <property name="jdbcUrl" value="jdbc:postgresql://localhost:5433/rsia_hikmah" />
+        <property name="user" value="postgres" />
+        <property name="password" value="postgre" /> 
+
+        <!-- these are connection pool properties for C3P0 -->
+        <property name="minPoolSize" value="5" />
+        <property name="maxPoolSize" value="20" />
+        <property name="maxIdleTime" value="30000" />
+	</bean>  
+	
+    <!-- Step 2: Setup Hibernate session factory -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+		<property name="dataSource" ref="myDataSource" />
+		<property name="packagesToScan" value="com.rsia.madura.entity" />
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+			</props>
+		</property>
+   </bean>	  
+
+    <!-- Step 3: Setup Hibernate transaction manager -->
+	<bean id="myTransactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+    
+    <!-- Step 4: Enable configuration of transactional behavior based on annotations -->
+	<tx:annotation-driven transaction-manager="myTransactionManager" />
+	<mvc:view-controller path="/" view-name="index" />
+	
+	<!-- bycrypt password encoder -->
+    <bean id="encoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder">
+        <constructor-arg name="strength" value="11"/>
+    </bean>
+
+	<security:http auto-config="true" use-expressions="true">
+
+		<security:headers>
+			<security:cache-control />
+		</security:headers>
+
+		<security:intercept-url pattern="/resources/**" access="permitAll" />
+		<security:intercept-url pattern="/login/**" access="permitAll" />
+		<!-- uncomment line below to activate login -->
+		<security:intercept-url pattern="/**" access="hasRole('ROLE_ADMIN')" />
+
+		<security:form-login login-page="/login" 
+		    default-target-url="/"
+			authentication-success-handler-ref="loginSuccessHandler"
+			authentication-failure-url="/login?error" 
+			username-parameter="user_name"
+			password-parameter="user_password"
+			login-processing-url="/login" />
+
+		<security:logout logout-success-url="/login?logout" delete-cookies="JSESSIONID" />
+		<security:csrf />
+
+	</security:http>
+
+	<security:authentication-manager>
+		<security:authentication-provider user-service-ref="userServiceLogin">
+		    <security:password-encoder ref="encoder"/>
+		</security:authentication-provider>
+	</security:authentication-manager>
+	<security:global-method-security secured-annotations="enabled" />
+
+
+	<bean id="userDAO" class="com.rsia.madura.dao.UserAction">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="userServiceLogin" class="com.rsia.madura.service.UserServiceLogin">
+		<property name="userDAO" ref="userDAO" />
+	</bean>
+
+    <bean id="loginSuccessHandler" class="com.rsia.madura.security.LoginSuccessHandler" />
+
+</beans>

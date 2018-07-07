@@ -1,0 +1,25 @@
+# table m_ruang
+alter table m_ruang 
+add column m_kelas_id integer,
+add column m_pelayanan_id integer,
+add column tarif_sarana real,
+add column tarif_cetak_kartu real,
+add column tarif_konsultasi real
+
+# table m_kamar
+alter table m_kamar	
+add column jumlah_bed integer,
+add column tarif real,
+add column jenis_pelayanan character(1)
+
+# m_paket_obat
+alter table m_paket_obat add column paket_nama character(200)
+ALTER TABLE m_paket_obat RENAME COLUMN m_barang_id TO m_obat_id;
+
+#pasien 
+alter table m_pasien add column wali_nama character varying(250)
+alter table m_pasien add column wali_tgllahir date
+alter table m_pasien add column wali_kelamin character varying(250)
+alter table m_pasien add column wali_telepon character varying(250)
+alter table m_pasien add column wali_alamat character varying(250)
+alter table m_pasien add column wali_hubungan character varying(250)
